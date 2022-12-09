@@ -1,0 +1,77 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PlayerController : MonoBehaviour
+{
+	private Rigidbody playerRb;
+	private GameObject focalPoint;
+	private SpawnManager spawnManager;
+	
+	private float powerupStrength = 15.0f;
+	private Vector3 offset = new Vector3(0, -0.5f, 0);
+	
+	public bool hasPowerup;
+	public float speed = 50;
+	public GameObject powerupIndicator;
+	
+	
+    // Start is called before the first frame update
+    void Start()
+    {
+		focalPoint = GameObject.Find("Focal Point");
+		spawnManager = GameObject.Find("Spawn Manager").GetComponent<SpawnManager>();
+		playerRb = GetComponent<Rigidbody>();
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+		powerupIndicator.transform.position = transform.position + offset;
+		float forwardInput = Input.GetAxis("Vertical");
+		playerRb.AddForce(focalPoint.transform.forward * speed * forwardInput * Time.deltaTime);
+		
+		if(transform.position.y < -2)
+		{
+			spawnManager.gameOver = true;
+			Destroy(gameObject);
+			Debug.Log("Game Over: " + spawnManager.gameOver.ToString());
+		}
+    }
+	
+	// Sets the state of powerup object.
+	private void OnTriggerEnter(Collider other)
+	{
+		if(other.gameObject.CompareTag("Powerup"))
+		{
+			hasPowerup = true;
+			Destroy(other.gameObject);
+			StartCoroutine(PowerupCountdownRoutine());
+			powerupIndicator.gameObject.SetActive(true);
+		}
+	}
+	
+	
+	// When player hits powerup, they push away enemies strongly.
+	private void OnCollisionEnter(Collision collision)
+	{		
+		if(collision.gameObject.CompareTag("Enemy") && hasPowerup)
+		{
+			Rigidbody enemyRb = collision.gameObject.GetComponent<Rigidbody>();
+			Vector3 awayFromPlayer = (collision.gameObject.transform.position - transform.position);
+			Debug.Log(string.Format("Collided with {0} with power up", collision.gameObject.name));
+			enemyRb.AddForce(awayFromPlayer * powerupStrength, ForceMode.Impulse);
+			
+		}
+		
+	}
+	
+	// Duration of the powerup.
+	IEnumerator PowerupCountdownRoutine()
+	{
+		yield return new WaitForSeconds(7);
+		hasPowerup = false;
+		powerupIndicator.gameObject.SetActive(false);
+	}
+}
